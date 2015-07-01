@@ -67,10 +67,17 @@ using namespace polly;
 
 using IslAstUserPayload = IslAstInfo::IslAstUserPayload;
 
-static cl::opt<bool>
+namespace polly {
+namespace opt {
+bool PollyParallel;
+}
+}
+
+static cl::opt<bool, true>
     PollyParallel("polly-parallel",
                   cl::desc("Generate thread parallel code (isl codegen only)"),
-                  cl::init(false), cl::ZeroOrMore, cl::cat(PollyCategory));
+                  cl::ZeroOrMore, cl::cat(PollyCategory),
+                  cl::location(polly::opt::PollyParallel), cl::init(false));
 
 static cl::opt<bool> PrintAccesses("polly-ast-print-accesses",
                                    cl::desc("Print memory access functions"),
@@ -523,7 +530,7 @@ IslAst::~IslAst() {
 }
 
 void IslAst::init(const Dependences &D) {
-  bool PerformParallelTest = PollyParallel || DetectParallel ||
+  bool PerformParallelTest = opt::PollyParallel || DetectParallel ||
                              PollyVectorizerChoice != VECTORIZER_NONE;
 
   // We can not perform the dependence analysis and, consequently,
@@ -632,7 +639,7 @@ bool IslAstInfo::isReductionParallel(__isl_keep isl_ast_node *Node) {
 }
 
 bool IslAstInfo::isExecutedInParallel(__isl_keep isl_ast_node *Node) {
-  if (!PollyParallel)
+  if (!opt::PollyParallel)
     return false;
 
   // Do not parallelize innermost loops.
