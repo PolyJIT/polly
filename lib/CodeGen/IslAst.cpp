@@ -70,6 +70,9 @@ using IslAstUserPayload = IslAstInfo::IslAstUserPayload;
 namespace polly {
 namespace opt {
 bool PollyParallel;
+bool PollyParallelForce;
+bool UseContext;
+bool DetectParallel;
 }
 }
 
@@ -84,21 +87,23 @@ static cl::opt<bool> PrintAccesses("polly-ast-print-accesses",
                                    cl::init(false), cl::ZeroOrMore,
                                    cl::cat(PollyCategory));
 
-static cl::opt<bool> PollyParallelForce(
+static cl::opt<bool, true> PollyParallelForce(
     "polly-parallel-force",
     cl::desc(
         "Force generation of thread parallel code ignoring any cost model"),
-    cl::init(false), cl::ZeroOrMore, cl::cat(PollyCategory));
+    cl::ZeroOrMore, cl::cat(PollyCategory),
+    cl::location(polly::opt::PollyParallelForce), cl::init(false));
 
-static cl::opt<bool> UseContext("polly-ast-use-context",
+static cl::opt<bool, true> UseContext("polly-ast-use-context",
                                 cl::desc("Use context"), cl::Hidden,
-                                cl::init(true), cl::ZeroOrMore,
-                                cl::cat(PollyCategory));
+                                cl::ZeroOrMore, cl::cat(PollyCategory),
+                                cl::location(polly::opt::UseContext),
+                                cl::init(true));
 
-static cl::opt<bool> DetectParallel("polly-ast-detect-parallel",
-                                    cl::desc("Detect parallelism"), cl::Hidden,
-                                    cl::init(false), cl::ZeroOrMore,
-                                    cl::cat(PollyCategory));
+static cl::opt<bool, true>
+    DetectParallel("polly-ast-detect-parallel", cl::desc("Detect parallelism"),
+                   cl::Hidden, cl::ZeroOrMore, cl::cat(PollyCategory),
+                   cl::location(polly::opt::DetectParallel), cl::init(true));
 
 STATISTIC(ScopsProcessed, "Number of SCoPs processed");
 STATISTIC(ScopsBeneficial, "Number of beneficial SCoPs");
@@ -530,7 +535,7 @@ IslAst::~IslAst() {
 }
 
 void IslAst::init(const Dependences &D) {
-  bool PerformParallelTest = opt::PollyParallel || DetectParallel ||
+  bool PerformParallelTest = opt::PollyParallel || opt::DetectParallel ||
                              PollyVectorizerChoice != VECTORIZER_NONE;
 
   // We can not perform the dependence analysis and, consequently,
@@ -556,7 +561,7 @@ void IslAst::init(const Dependences &D) {
   isl_ast_build *Build;
   AstBuildUserInfo BuildInfo;
 
-  if (UseContext)
+  if (opt::UseContext)
     Build = isl_ast_build_from_context(S.getContext().release());
   else
     Build = isl_ast_build_from_context(
