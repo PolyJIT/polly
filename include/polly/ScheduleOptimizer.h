@@ -354,4 +354,29 @@ private:
 ///                      relation.
 isl::set getPartialTilePrefixes(isl::set ScheduleRange, int VectorWidth);
 
-#endif // POLLY_SCHEDULEOPTIMIZER_H
+namespace polly {
+  class IslScheduleOptimizer : public ScopPass {
+  public:
+    static char ID;
+    explicit IslScheduleOptimizer() : ScopPass(ID) { LastSchedule = nullptr; }
+
+    ~IslScheduleOptimizer();
+
+    /// @brief Optimize the schedule of the SCoP @p S.
+    bool runOnScop(Scop &S) override;
+
+    /// @brief Print the new schedule for the SCoP @p S.
+    void printScop(raw_ostream &OS, Scop &S) const override;
+
+    /// @brief Register all analyses and transformation required.
+    void getAnalysisUsage(AnalysisUsage &AU) const override;
+
+    /// @brief Release the internal memory.
+    void releaseMemory() override;
+
+  private:
+    isl_schedule *LastSchedule;
+  };
+}
+
+#endif
