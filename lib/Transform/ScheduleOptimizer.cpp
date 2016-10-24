@@ -99,6 +99,8 @@ int PrevectorWidth;
 bool FirstLevelTiling;
 bool SecondLevelTiling;
 bool RegisterTiling;
+int FirstLevelDefaultTileSize;
+int SecondLevelDefaultTileSize;
 }
 }
 
@@ -235,11 +237,13 @@ static cl::opt<int> VectorRegisterBitwidth(
              "information is taken from LLVM's target information."),
     cl::Hidden, cl::init(-1), cl::ZeroOrMore, cl::cat(PollyCategory));
 
-static cl::opt<int> FirstLevelDefaultTileSize(
+static cl::opt<int, true> FirstLevelDefaultTileSize(
     "polly-default-tile-size",
     cl::desc("The default tile size (if not enough were provided by"
              " --polly-tile-sizes)"),
-    cl::Hidden, cl::init(32), cl::ZeroOrMore, cl::cat(PollyCategory));
+    cl::Hidden, cl::ZeroOrMore,
+    cl::location(polly::opt::FirstLevelDefaultTileSize), cl::init(32),
+    cl::cat(PollyCategory));
 
 static cl::list<int>
     FirstLevelTileSizes("polly-tile-sizes",
@@ -255,11 +259,13 @@ static cl::opt<bool, true>
                       cl::location(polly::opt::SecondLevelTiling),
                       cl::init(false), cl::cat(PollyCategory));
 
-static cl::opt<int> SecondLevelDefaultTileSize(
+static cl::opt<int, true> SecondLevelDefaultTileSize(
     "polly-2nd-level-default-tile-size",
     cl::desc("The default 2nd-level tile size (if not enough were provided by"
              " --polly-2nd-level-tile-sizes)"),
-    cl::Hidden, cl::init(16), cl::ZeroOrMore, cl::cat(PollyCategory));
+    cl::Hidden, cl::ZeroOrMore,
+    cl::location(polly::opt::SecondLevelDefaultTileSize), cl::init(16),
+    cl::cat(PollyCategory));
 
 static cl::list<int>
     SecondLevelTileSizes("polly-2nd-level-tile-sizes",
