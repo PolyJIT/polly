@@ -245,12 +245,16 @@ static cl::opt<int, true> FirstLevelDefaultTileSize(
     cl::location(polly::opt::FirstLevelDefaultTileSize), cl::init(32),
     cl::cat(PollyCategory));
 
-static cl::list<int>
+namespace polly {
+namespace opt {
+cl::list<int>
     FirstLevelTileSizes("polly-tile-sizes",
                         cl::desc("A tile size for each loop dimension, filled "
                                  "with --polly-default-tile-size"),
                         cl::Hidden, cl::ZeroOrMore, cl::CommaSeparated,
                         cl::cat(PollyCategory));
+}
+}
 
 static cl::opt<bool, true>
     SecondLevelTiling("polly-2nd-level-tiling",
@@ -267,12 +271,16 @@ static cl::opt<int, true> SecondLevelDefaultTileSize(
     cl::location(polly::opt::SecondLevelDefaultTileSize), cl::init(16),
     cl::cat(PollyCategory));
 
-static cl::list<int>
+namespace polly {
+namespace opt {
+cl::list<int>
     SecondLevelTileSizes("polly-2nd-level-tile-sizes",
                          cl::desc("A tile size for each loop dimension, filled "
                                   "with --polly-default-tile-size"),
                          cl::Hidden, cl::ZeroOrMore, cl::CommaSeparated,
                          cl::cat(PollyCategory));
+}
+}
 
 static cl::opt<bool, true>
     RegisterTiling("polly-register-tiling", cl::desc("Enable register tiling"),
@@ -555,13 +563,13 @@ bool ScheduleTreeOptimizer::isTileableBandNode(isl::schedule_node Node) {
 __isl_give isl::schedule_node
 ScheduleTreeOptimizer::standardBandOpts(isl::schedule_node Node, void *User) {
   if (opt::FirstLevelTiling)
-    Node = tileNode(Node, "1st level tiling", FirstLevelTileSizes,
-                    FirstLevelDefaultTileSize);
+    Node = tileNode(Node, "1st level tiling", polly::opt::FirstLevelTileSizes,
+                    polly::opt::FirstLevelDefaultTileSize);
     FirstLevelTileOpts++;
   }
 
   if (opt::SecondLevelTiling)
-    Node = tileNode(Node, "2nd level tiling", SecondLevelTileSizes,
+    Node = tileNode(Node, "2nd level tiling", polly::opt::SecondLevelTileSizes,
                     SecondLevelDefaultTileSize);
     SecondLevelTileOpts++;
   }
