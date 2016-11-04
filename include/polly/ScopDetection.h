@@ -135,6 +135,7 @@ extern bool PollyInvariantLoadHoisting;
 extern bool PollyAllowUnsignedOperations;
 extern bool PollyAllowFullFunction;
 extern int ProfitabilityMinPerLoopInstructions;
+extern bool PollyAllowNonAffineSubRegions;
 
 /// A function attribute which will cause Polly to skip the function
 extern StringRef PollySkipFnAttr;
