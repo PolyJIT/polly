@@ -254,6 +254,8 @@ StringRef polly::PollySkipFnAttr = "polly.skip.fn";
 // Statistics.
 
 STATISTIC(NumScopRegions, "Number of scops");
+STATISTIC(WeightedValidRegion,
+          "Number of weighted regions that a valid part of Scop");
 STATISTIC(NumLoopsInScop, "Number of loops in scops");
 STATISTIC(NumScopsDepthOne, "Number of scops with maximal loop depth 1");
 STATISTIC(NumScopsDepthTwo, "Number of scops with maximal loop depth 2");
@@ -345,6 +347,14 @@ static bool doesStringMatchAnyRegex(StringRef Str,
   }
   return false;
 }
+	
+static int getNumSubRegions(const Region &R) {
+  int count = 1;
+  for (const auto &Child : R) {
+    count += getNumSubRegions(*Child);
+  }
+  return count;
+}
 //===----------------------------------------------------------------------===//
 // ScopDetection.
 
@@ -397,6 +407,10 @@ ScopDetection::ScopDetection(Function &F, const DominatorTree &DT,
 
   if (ReportLevel)
     printLocations(F);
+
+  for (const Region *R : *this) {
+    WeightedValidRegion += getNumSubRegions(*R);
+  }
 
   assert(ValidRegions.size() <= DetectionContextMap.size() &&
          "Cached more results than valid regions");
