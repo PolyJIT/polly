@@ -354,6 +354,8 @@ private:
 ///                      relation.
 isl::set getPartialTilePrefixes(isl::set ScheduleRange, int VectorWidth);
 
+#include "llvm/Support/raw_ostream.h"
+#include "polly/ScopPass.h"
 namespace polly {
   class IslScheduleOptimizer : public ScopPass {
   public:
@@ -366,10 +368,10 @@ namespace polly {
     bool runOnScop(Scop &S) override;
 
     /// @brief Print the new schedule for the SCoP @p S.
-    void printScop(raw_ostream &OS, Scop &S) const override;
+    void printScop(llvm::raw_ostream &OS, Scop &S) const override;
 
     /// @brief Register all analyses and transformation required.
-    void getAnalysisUsage(AnalysisUsage &AU) const override;
+    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
 
     /// @brief Release the internal memory.
     void releaseMemory() override;

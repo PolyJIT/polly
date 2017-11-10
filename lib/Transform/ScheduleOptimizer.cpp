@@ -562,19 +562,19 @@ bool ScheduleTreeOptimizer::isTileableBandNode(isl::schedule_node Node) {
 
 __isl_give isl::schedule_node
 ScheduleTreeOptimizer::standardBandOpts(isl::schedule_node Node, void *User) {
-  if (opt::FirstLevelTiling)
+  if (opt::FirstLevelTiling) {
     Node = tileNode(Node, "1st level tiling", polly::opt::FirstLevelTileSizes,
                     polly::opt::FirstLevelDefaultTileSize);
     FirstLevelTileOpts++;
   }
 
-  if (opt::SecondLevelTiling)
+  if (opt::SecondLevelTiling) {
     Node = tileNode(Node, "2nd level tiling", polly::opt::SecondLevelTileSizes,
                     SecondLevelDefaultTileSize);
     SecondLevelTileOpts++;
   }
 
-  if (opt::RegisterTiling)
+  if (opt::RegisterTiling) {
     Node =
         applyRegisterTiling(Node, RegisterTileSizes, RegisterDefaultTileSize);
     RegisterTileOpts++;
