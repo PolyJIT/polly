@@ -41,6 +41,7 @@ namespace opt {
   extern bool RegisterTiling;
   extern int FirstLevelDefaultTileSize;
   extern llvm::cl::list<int> FirstLevelTileSizes;
+  extern bool DynamicTileSizes;
   extern int SecondLevelDefaultTileSize;
   extern llvm::cl::list<int> SecondLevelTileSizes;
 

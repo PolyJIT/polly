@@ -80,6 +80,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 using namespace llvm;
 using namespace polly;
@@ -97,6 +98,7 @@ std::string FusionStrategy;
 std::string OuterCoincidence;
 int PrevectorWidth;
 bool FirstLevelTiling;
+bool DynamicTileSizes;
 bool SecondLevelTiling;
 bool RegisterTiling;
 int FirstLevelDefaultTileSize;
@@ -254,7 +256,14 @@ cl::list<int>
                         cl::Hidden, cl::ZeroOrMore, cl::CommaSeparated,
                         cl::cat(PollyCategory));
 }
-}
+
+cl::opt<bool, true>
+    DynamicTileSizesX("polly-use-dynamic-tile-sizes",
+                      cl::desc("Enable the use of dynamic tile sizes"),
+                      cl::ZeroOrMore,
+                      cl::location(polly::opt::DynamicTileSizes),
+                      cl::init(false), cl::cat(PollyCategory));
+} // namespace polly
 
 static cl::opt<bool, true>
     SecondLevelTiling("polly-2nd-level-tiling",
@@ -560,11 +569,77 @@ bool ScheduleTreeOptimizer::isTileableBandNode(isl::schedule_node Node) {
   return isSimpleInnermostBand(Node);
 }
 
+TileSizeInfo ScheduleTreeOptimizer::calcTileSizes(isl::schedule_node Node) {
+  auto Child = Node.child(0);
+  auto Domain = Child.get_domain();
+
+  TileSizeInfo SizeInfo;
+  Domain.foreach_set([&SizeInfo] (isl::set S) -> isl::stat {
+      auto Id = S.get_tuple_id();
+      void *User = Id.get_user();
+      auto Statement = static_cast<ScopStmt *>(User);
+      auto Scop = Statement->getParent();
+
+      SizeInfo.MaxDims = std::max(SizeInfo.MaxDims, S.dim(isl::dim::set));
+      ScalarEvolution *SE = Scop->getSE();
+      for (auto *Access : *Statement) {
+        auto *SAI = Access->getLatestScopArrayInfo();
+        SizeInfo.WorkingSet += SAI->getElemSizeInBytes();
+      }
+
+      Loop *L = Statement->getSurroundingLoop();
+
+      while (L) {
+        if (auto *Constant =
+                llvm::dyn_cast<SCEVConstant>(SE->getBackedgeTakenCount(L))) {
+          SizeInfo.NumIterations *= Constant->getValue()->getLimitedValue() + 1;
+        }
+        L = L->getParentLoop();
+      }
+
+      return isl::stat::ok;
+  });
+
+  // Distribute workload over dimensions.
+  int TotalSize = SizeInfo.NumIterations * SizeInfo.WorkingSet;
+  int MaxDims = SizeInfo.MaxDims;
+
+  SizeInfo.Sizes.assign(MaxDims, polly::opt::FirstLevelDefaultTileSize);
+  if (TotalSize > 1.5 * 4 * 4096) {
+    /*FIXME:Replace with Parametric Cache Size */
+    int SizeL1 = static_cast<uint64_t>(std::sqrt(TotalSize / 4096));
+    /*FIXME:Replace with Parametric 2 (overcommit) * ThreadCount */
+    int SizeL2 = static_cast<uint64_t>(std::ceil(SizeL1 / (1.5 * 4)));
+
+    if (MaxDims >= 2) {
+      SizeInfo.Sizes[1] = SizeL1;
+      SizeInfo.Sizes[0] = SizeL2;
+    }
+    else if (SizeInfo.MaxDims >= 1) {
+      SizeInfo.Sizes[0] = SizeL2;
+    }
+  }
+  return SizeInfo;
+}
+
 __isl_give isl::schedule_node
 ScheduleTreeOptimizer::standardBandOpts(isl::schedule_node Node, void *User) {
   if (opt::FirstLevelTiling) {
-    Node = tileNode(Node, "1st level tiling", polly::opt::FirstLevelTileSizes,
-                    polly::opt::FirstLevelDefaultTileSize);
+    TileSizeInfo SizeInfo = calcTileSizes(Node);
+    //DEBUG({
+      //llvm::dbgs() << Node.to_str() << "\n";
+      int i = 0;
+      for (int Size : SizeInfo.Sizes) {
+        llvm::dbgs() << i++ << ": " << Size << "\n";
+      }
+    //});
+    if (polly::opt::DynamicTileSizes) {
+      Node = tileNode(Node, "1st level tiling", SizeInfo.Sizes,
+                      polly::opt::FirstLevelDefaultTileSize);
+    } else {
+      Node = tileNode(Node, "1st level tiling", polly::opt::FirstLevelTileSizes,
+                      polly::opt::FirstLevelDefaultTileSize);
+    }
     FirstLevelTileOpts++;
   }
 

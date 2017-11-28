@@ -11,6 +11,7 @@
 #define POLLY_SCHEDULEOPTIMIZER_H
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/SmallVector.h"
 #include "isl/isl-noexceptions.h"
 
 namespace llvm {
@@ -45,6 +46,13 @@ namespace polly {
 struct Dependences;
 class MemoryAccess;
 class Scop;
+
+struct TileSizeInfo {
+  unsigned MaxDims = 0;
+  unsigned NumIterations = 1;
+  unsigned WorkingSet = 0;
+  llvm::SmallVector<int, 2> Sizes;
+};
 
 /// Additional parameters of the schedule optimizer.
 ///
@@ -210,6 +218,7 @@ private:
   ///
   /// @param Node The node to check.
   static bool isTileableBandNode(isl::schedule_node Node);
+  static polly::TileSizeInfo calcTileSizes(isl::schedule_node Node);
 
   /// Pre-vectorizes one scheduling dimension of a schedule band.
   ///
