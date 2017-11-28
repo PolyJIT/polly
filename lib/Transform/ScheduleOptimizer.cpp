@@ -626,13 +626,13 @@ __isl_give isl::schedule_node
 ScheduleTreeOptimizer::standardBandOpts(isl::schedule_node Node, void *User) {
   if (opt::FirstLevelTiling) {
     TileSizeInfo SizeInfo = calcTileSizes(Node);
-    //DEBUG({
-      //llvm::dbgs() << Node.to_str() << "\n";
+    DEBUG({
+      llvm::dbgs() << Node.to_str() << "\n";
       int i = 0;
       for (int Size : SizeInfo.Sizes) {
         llvm::dbgs() << i++ << ": " << Size << "\n";
       }
-    //});
+    });
     if (polly::opt::DynamicTileSizes) {
       Node = tileNode(Node, "1st level tiling", SizeInfo.Sizes,
                       polly::opt::FirstLevelDefaultTileSize);
