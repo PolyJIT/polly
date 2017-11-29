@@ -103,6 +103,9 @@ bool SecondLevelTiling;
 bool RegisterTiling;
 int FirstLevelDefaultTileSize;
 int SecondLevelDefaultTileSize;
+
+int CacheSizeInBytes;
+int NumberOfPhysicalCores;
 }
 }
 
@@ -263,6 +266,21 @@ cl::opt<bool, true>
                       cl::ZeroOrMore,
                       cl::location(polly::opt::DynamicTileSizes),
                       cl::init(false), cl::cat(PollyCategory));
+
+cl::opt<int, true> CacheSizeInBytesX(
+    "polly-cache-size",
+    cl::desc("The cache size in bytes"),
+    cl::Hidden, cl::ZeroOrMore,
+    cl::location(polly::opt::CacheSizeInBytes), cl::init(4096),
+    cl::cat(PollyCategory));
+
+cl::opt<int, true> NumberOfPhysicalCoresX(
+    "polly-num-physical-cores",
+    cl::desc("The number of physical cores available"),
+    cl::Hidden, cl::ZeroOrMore,
+    cl::location(polly::opt::NumberOfPhysicalCores), cl::init(2),
+    cl::cat(PollyCategory));
+
 } // namespace polly
 
 static cl::opt<bool, true>
@@ -601,21 +619,24 @@ TileSizeInfo ScheduleTreeOptimizer::calcTileSizes(isl::schedule_node Node) {
   });
 
   // Distribute workload over dimensions.
-  int TotalSize = SizeInfo.NumIterations * SizeInfo.WorkingSet;
-  int MaxDims = SizeInfo.MaxDims;
+  const int TotalSize = SizeInfo.NumIterations * SizeInfo.WorkingSet;
+  const int MaxDims = SizeInfo.MaxDims;
+  const double OvercommitFactor = 1.5;
+  const int MinWorkload = OvercommitFactor * polly::opt::NumberOfPhysicalCores *
+                          polly::opt::CacheSizeInBytes;
 
   SizeInfo.Sizes.assign(MaxDims, polly::opt::FirstLevelDefaultTileSize);
-  if (TotalSize > 1.5 * 4 * 4096) {
-    /*FIXME:Replace with Parametric Cache Size */
-    int SizeL1 = static_cast<uint64_t>(std::sqrt(TotalSize / 4096));
-    /*FIXME:Replace with Parametric 2 (overcommit) * ThreadCount */
-    int SizeL2 = static_cast<uint64_t>(std::ceil(SizeL1 / (1.5 * 4)));
+  if (TotalSize > MinWorkload) {
+    int SizeL1 =
+        static_cast<uint64_t>(TotalSize / polly::opt::CacheSizeInBytes /
+                              polly::opt::NumberOfPhysicalCores);
+    int SizeL2 = static_cast<uint64_t>(std::ceil(
+        SizeL1 / (OvercommitFactor * polly::opt::NumberOfPhysicalCores)));
 
     if (MaxDims >= 2) {
       SizeInfo.Sizes[1] = SizeL1;
       SizeInfo.Sizes[0] = SizeL2;
-    }
-    else if (SizeInfo.MaxDims >= 1) {
+    } else if (SizeInfo.MaxDims >= 1) {
       SizeInfo.Sizes[0] = SizeL2;
     }
   }
